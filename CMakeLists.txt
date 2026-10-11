@@ -102,6 +102,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O2")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB REQUIRED glib-2.0)
+pkg_check_modules(GMODULE REQUIRED gmodule-2.0)
 pkg_check_modules(LIBNM REQUIRED libnm)
 
 set(HAVE_GTK3 OFF)
@@ -219,6 +220,7 @@ set(COMMON_DEFINITIONS
 
 set(PROPERTIES_RESOURCES_DIR ${CMAKE_SOURCE_DIR}/properties)
 set(PROPERTIES_RESOURCES_XML ${CMAKE_SOURCE_DIR}/properties/gresource.xml)
+set(PROPERTIES_GTK4_RESOURCES_XML ${CMAKE_SOURCE_DIR}/properties/gresource-gtk4.xml)
 
 # find_program(REQUIRED) needs CMake 3.18; the explicit check works on the
 # 3.13 minimum and fails with a clear message instead of a confusing
@@ -279,6 +281,34 @@ add_custom_command(
 )
 
 add_custom_target(gresources ALL DEPENDS properties/resources.h properties/resources.c)
+
+add_custom_command(
+    OUTPUT properties/resources-gtk4.h
+    COMMAND /usr/bin/glib-compile-resources
+        ${PROPERTIES_GTK4_RESOURCES_XML}
+        --target=properties/resources-gtk4.h
+        --sourcedir=${PROPERTIES_RESOURCES_DIR}
+        --generate-header
+        --internal
+    DEPENDS ${PROPERTIES_GTK4_RESOURCES_XML}
+            properties/nm-amneziawg-dialog-gtk4.ui
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+add_custom_command(
+    OUTPUT properties/resources-gtk4.c
+    COMMAND /usr/bin/glib-compile-resources
+        ${PROPERTIES_GTK4_RESOURCES_XML}
+        --target=properties/resources-gtk4.c
+        --sourcedir=${PROPERTIES_RESOURCES_DIR}
+        --generate-source
+        --internal
+    DEPENDS ${PROPERTIES_GTK4_RESOURCES_XML}
+            properties/nm-amneziawg-dialog-gtk4.ui
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+add_custom_target(gresources-gtk4 ALL DEPENDS properties/resources-gtk4.h properties/resources-gtk4.c)
 
 set(PROPERTIES_CPPFLAGS
     -DICONDIR=\"${CMAKE_INSTALL_PREFIX}/share/pixmaps\"
@@ -398,7 +428,13 @@ target_compile_options(nm-vpn-plugin-amneziawg PRIVATE
     -DNETWORKMANAGER_COMPILATION=NM_NETWORKMANAGER_COMPILATION_LIB_BASE
     -DNM_PLUGIN_DIR="${NM_PLUGIN_DIR}"
 )
-target_link_libraries(nm-vpn-plugin-amneziawg PRIVATE ${COMMON_LDFLAGS} nm-vpn-plugin-amneziawg-core ${LIBNM_LIBRARIES} ${CMAKE_DL_LIBS})
+target_link_libraries(nm-vpn-plugin-amneziawg PRIVATE
+    ${COMMON_LDFLAGS}
+    nm-vpn-plugin-amneziawg-core
+    ${LIBNM_LIBRARIES}
+    ${GMODULE_LIBRARIES}
+    ${CMAKE_DL_LIBS}
+)
 set_target_properties(nm-vpn-plugin-amneziawg PROPERTIES
     OUTPUT_NAME "nm-vpn-plugin-amneziawg"
 )
@@ -432,7 +468,11 @@ if(WITH_GTK3)
 endif()
 
 if(WITH_GTK4)
-    add_library(nm-vpn-plugin-amneziawg-editor-gtk4 SHARED ${EDITOR_SOURCES})
+    add_library(nm-vpn-plugin-amneziawg-editor-gtk4 SHARED
+        ${EDITOR_SOURCES}
+        properties/resources-gtk4.h
+        properties/resources-gtk4.c
+    )
     target_include_directories(nm-vpn-plugin-amneziawg-editor-gtk4 PRIVATE ${CMAKE_SOURCE_DIR}/shared ${CMAKE_BINARY_DIR} ${GTK4_INCLUDE_DIRS} ${LIBNMA4_INCLUDE_DIRS})
     target_link_libraries(nm-vpn-plugin-amneziawg-editor-gtk4 PRIVATE
         ${COMMON_LDFLAGS} nm-vpn-plugin-amneziawg-core nm-vpn-plugin-amneziawg-utils ${GLIB_LIBRARIES} ${GTK4_LIBRARIES} ${LIBNM_LIBRARIES} ${LIBNMA4_LIBRARIES}
@@ -441,6 +481,7 @@ if(WITH_GTK4)
         ${COMMON_CFLAGS} ${GTK4_CFLAGS} ${COMMON_DEFINITIONS} ${PROPERTIES_CPPFLAGS}
         -DNETWORKMANAGER_COMPILATION=NM_NETWORKMANAGER_COMPILATION_LIB_EDITOR
         -DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_4_6
+        -DAMNEZIAWG_UI_RESOURCE_PATH="/org/freedesktop/network-manager-amneziawg-gtk4/nm-amneziawg-dialog-gtk4.ui"
     )
     target_link_options(nm-vpn-plugin-amneziawg-editor-gtk4 PRIVATE
             "-Wl,--version-script=${CMAKE_SOURCE_DIR}/properties/nm-vpn-plugin-amneziawg-editor.ver"

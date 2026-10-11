@@ -205,19 +205,33 @@ _call_editor_factory(gpointer factory,
 static NMVpnEditor *
 get_editor(NMVpnEditorPlugin *iface, NMConnection *connection, GError **error)
 {
+    gpointer gtk4_only_symbol;
+    GModule *self_module;
+    const char *editor;
+    char *editor_path;
+    NMVpnEditor *result;
+
     g_return_val_if_fail(AMNEZIAWG_IS_EDITOR_PLUGIN(iface), NULL);
     g_return_val_if_fail(NM_IS_CONNECTION(connection), NULL);
     g_return_val_if_fail(!error || !*error, NULL);
 
-    {
-        return nm_vpn_plugin_utils_load_editor(NM_PLUGIN_DIR "/libnm-vpn-plugin-amneziawg-editor.so",
-                                               "nm_vpn_editor_factory_amneziawg",
-                                               _call_editor_factory,
-                                               iface,
-                                               connection,
-                                               NULL,
-                                               error);
-    }
+    self_module = g_module_open(NULL, 0);
+    g_module_symbol(self_module, "gtk_window_set_child", &gtk4_only_symbol);
+    g_module_close(self_module);
+
+    editor = gtk4_only_symbol ? "libnm-gtk4-vpn-plugin-amneziawg-editor.so"
+                              : "libnm-vpn-plugin-amneziawg-editor.so";
+    editor_path = g_strdup_printf("%s/%s", NM_PLUGIN_DIR, editor);
+
+    result = nm_vpn_plugin_utils_load_editor(editor_path,
+                                             "nm_vpn_editor_factory_amneziawg",
+                                             _call_editor_factory,
+                                             iface,
+                                             connection,
+                                             NULL,
+                                             error);
+    g_free(editor_path);
+    return result;
 }
 
 /*****************************************************************************/
