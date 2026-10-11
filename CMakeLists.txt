@@ -102,6 +102,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O2")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB REQUIRED glib-2.0)
+pkg_check_modules(GIO REQUIRED gio-2.0 gio-unix-2.0)
 pkg_check_modules(GMODULE REQUIRED gmodule-2.0)
 pkg_check_modules(LIBNM REQUIRED libnm)
 
@@ -335,6 +336,11 @@ target_link_options(nm-amneziawg-service PRIVATE
 )
 set_target_properties(nm-amneziawg-service PROPERTIES OUTPUT_NAME "nm-amneziawg-service" LINKER_LANGUAGE C)
 
+add_executable(nm-amneziawg-auth-dialog src/nm-amneziawg-auth-dialog.c)
+target_link_libraries(nm-amneziawg-auth-dialog PRIVATE ${GLIB_LIBRARIES} ${GIO_LIBRARIES})
+target_compile_definitions(nm-amneziawg-auth-dialog PRIVATE GETTEXT_PACKAGE="${GETTEXT_PACKAGE}")
+target_compile_options(nm-amneziawg-auth-dialog PRIVATE ${COMMON_CFLAGS} ${GIO_CFLAGS} ${COMMON_DEFINITIONS})
+
 add_executable(nm-amneziawg-test tests/test-main.c
     shared/awg/awg-config.c
     shared/awg/awg-device.c
@@ -442,6 +448,7 @@ target_link_options(nm-vpn-plugin-amneziawg PRIVATE
         "-Wl,--version-script=${CMAKE_SOURCE_DIR}/properties/nm-vpn-plugin-amneziawg.ver"
 )
 install(TARGETS nm-amneziawg-service RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
+install(TARGETS nm-amneziawg-auth-dialog RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
 install(TARGETS nm-vpn-plugin-amneziawg-core nm-vpn-plugin-amneziawg LIBRARY DESTINATION ${NM_PLUGIN_DIR})
 
 install(FILES nm-amneziawg-service.conf DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system.d)

@@ -6,3 +6,7 @@ supports-multiple-connections=false
 
 [libnm]
 plugin=@NM_PLUGIN_DIR@/libnm-vpn-plugin-amneziawg.so
+
+[GNOME]
+auth-dialog=@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LIBEXECDIR@/nm-amneziawg-auth-dialog
+
